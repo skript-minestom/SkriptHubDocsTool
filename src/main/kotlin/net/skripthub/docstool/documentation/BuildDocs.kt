@@ -28,7 +28,7 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: net.minest
     private var addonPackageMap: HashMap<String, String> = hashMapOf(
         "com.github.hapily04.skriptminestom" to "ch.njol.skript",
         "org.skriptlang.skript" to "ch.njol.skript",
-        "Skript" to "ch.njol.skript"
+        "skript-minestom" to "ch.njol.skript"
     )
 
     private val fileType: FileType = JsonFile(false)
@@ -41,7 +41,7 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: net.minest
         if (Skript.isAcceptRegistrations())
             return
         addonMap[Skript::class.java.`package`.name] = AddonData(
-                "Skript", AddonMetadata(Skript.getVersion().toString()))
+                "skript-minestom", AddonMetadata(Skript.getVersion().toString()))
         for (addon in Skript.getAddons())
             addonMap[addon.plugin.javaClass.`package`.name] = AddonData(
                     addon.name, AddonMetadata(addon.version.toString()))
