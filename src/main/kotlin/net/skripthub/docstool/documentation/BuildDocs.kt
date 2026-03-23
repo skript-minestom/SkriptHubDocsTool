@@ -12,13 +12,11 @@ import net.skripthub.docstool.modals.AddonMetadata
 import net.skripthub.docstool.modals.SyntaxData
 import net.skripthub.docstool.utils.EventValuesGetter
 import org.bukkit.Bukkit
-import org.bukkit.ChatColor
-import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.*
 
 
-class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSender?) : Runnable{
+class BuildDocs(private val instance: JavaPlugin, private val sender: net.minestom.server.command.CommandSender) : Runnable{
 
     private var addonMap: HashMap<String, AddonData> = hashMapOf()
 
@@ -53,19 +51,19 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
             val eventInfoClass = eventInfoClassUnsafe as SkriptEventInfo<*>
             val addonEvents = getAddon(eventInfoClass)?.events ?: continue
             // TODO Throw error when null
-            addSyntax(addonEvents, GenerateSyntax.generateSyntaxFromEvent(eventInfoClass, getter, sender))
+            addSyntax(addonEvents, GenerateSyntax.generateSyntaxFromEvent(eventInfoClass, getter))
         }
 
         // Conditions
         for (syntaxElementInfo in Skript.getConditions()) {
             val addonConditions = getAddon(syntaxElementInfo)?.conditions ?: continue
-            addSyntax(addonConditions, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo, sender))
+            addSyntax(addonConditions, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo))
         }
 
         // Effects
         for (syntaxElementInfo in Skript.getEffects()) {
             val addonEffects = getAddon(syntaxElementInfo)?.effects ?: continue
-            addSyntax(addonEffects, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo, sender))
+            addSyntax(addonEffects, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo))
         }
 
         // Expressions
@@ -74,7 +72,7 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
         val log = SkriptLogger.startParseLogHandler()
         for (info in Skript.getExpressions()) {
             val addonExpressions = getAddon(info)?.expressions ?: continue
-            addSyntax(addonExpressions, GenerateSyntax.generateSyntaxFromExpression(info, sender))
+            addSyntax(addonExpressions, GenerateSyntax.generateSyntaxFromExpression(info))
         }
         log.clear()
         log.stop()
@@ -94,13 +92,13 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
         // Sections
         for (syntaxElementInfo in Skript.getSections()) {
             val addonSections = getAddon(syntaxElementInfo)?.sections ?: continue
-            addSyntax(addonSections, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo, sender))
+            addSyntax(addonSections, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo))
         }
 
         // Structures
         for (syntaxElementInfo in Skript.getStructures()) {
             val addonStructures = getAddon(syntaxElementInfo)?.structures ?: continue
-            addSyntax(addonStructures, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo, sender))
+            addSyntax(addonStructures, GenerateSyntax.generateSyntaxFromSyntaxElementInfo(syntaxElementInfo))
         }
 
         // Error Check Each Addon! (No id collisions)
@@ -146,9 +144,7 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
 
         }
 
-        sender?.sendMessage("[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                + ChatColor.RESET + "] " + ChatColor.GREEN + "Docs have been generated!")
-
+        sender.sendMessage("Done building docs!")
     }
 
     private fun idCollisionTest(idSet: MutableSet<String>, listOfSyntaxData: MutableList<SyntaxData>, addon: String): MutableList<String>{
@@ -174,8 +170,6 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
 
     private fun attemptTypeMerge(listOfSyntaxData: MutableList<SyntaxData>, id: String) {
         // Message attempting merge
-        sender?.sendMessage("[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                + ChatColor.RESET + "] " + ChatColor.GREEN + "Attempting merge of $id")
         val idCollisionList: ArrayList<SyntaxData> = ArrayList()
         val iterator = listOfSyntaxData.listIterator()
         while (iterator.hasNext()) {
@@ -189,9 +183,6 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
         // No collision, might be a different syntax type
         if(idCollisionList.size < 2){
             listOfSyntaxData.addAll(idCollisionList)
-            sender?.sendMessage("[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                    + ChatColor.RESET + "] " + ChatColor.GOLD + "Merge of $id unsuccessful, conflict might be "
-                    + "between two different syntax types or it might have already been resolved")
             return
         }
         // Use first instance as a template and try to merge into first instance
@@ -216,20 +207,11 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: CommandSen
         listOfSyntaxData.add(firstInstance)
 
         if(repairedCount > 0){
-            sender?.sendMessage("[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                    + ChatColor.RESET + "] " + ChatColor.GREEN + "Merged ${repairedCount + 1} out of ${idCollisionList.size} "
-                    + "instances of $id")
             return
         }
-        sender?.sendMessage("[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                + ChatColor.RESET + "] " + ChatColor.RED + "Unable to merge ${idCollisionList.size} "
-                + "instances of $id")
     }
 
     private fun idCollisionErrorMessage(addon: String, id: String){
-        sender?.sendMessage("[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                + ChatColor.RESET + "] " + ChatColor.RED + "ID COLLISION DETECTED!\n" +
-                "Plugin: $addon\nMultiple syntax elements with the same id: $id")
     }
 
     private fun addSyntax(list: MutableList<SyntaxData>, syntax: SyntaxData?) {

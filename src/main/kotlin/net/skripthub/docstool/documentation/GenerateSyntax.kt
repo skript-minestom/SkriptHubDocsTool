@@ -13,8 +13,6 @@ import net.skripthub.docstool.modals.DocumentationEntryNode
 import net.skripthub.docstool.modals.SyntaxData
 import net.skripthub.docstool.utils.EventValuesGetter
 import net.skripthub.docstool.utils.ReflectionUtils
-import org.bukkit.ChatColor
-import org.bukkit.command.CommandSender
 import org.bukkit.event.Cancellable
 import org.skriptlang.skript.lang.entry.EntryValidator
 import org.skriptlang.skript.lang.entry.EntryValidator.EntryValidatorBuilder
@@ -27,7 +25,7 @@ class GenerateSyntax {
 
     companion object {
 
-        fun generateSyntaxFromSyntaxElementInfo(info: SyntaxElementInfo<*>, sender: CommandSender?): SyntaxData? {
+        fun generateSyntaxFromSyntaxElementInfo(info: SyntaxElementInfo<*>): SyntaxData? {
             val syntaxInfoClass = info.getElementClass()
             if (syntaxInfoClass.isAnnotationPresent(NoDoc::class.java))
                 return null
@@ -37,17 +35,17 @@ class GenerateSyntax {
             data.id = grabAnnotation(syntaxInfoClass, DocumentationId::class.java, { it.value.ifBlank { null } }, syntaxInfoClass.simpleName)
             data.description = cleanHTML(grabAnnotation(syntaxInfoClass, Description::class.java, { it.value }))
             data.patterns = cleanSyntaxInfoPatterns(info.patterns)
-            data.entries = generateEntriesFromSyntaxElementInfo(info, sender)
+            data.entries = generateEntriesFromSyntaxElementInfo(info)
             data.examples = cleanSyntaxInfoExamples(syntaxInfoClass)
-            data.since = cleanHTML(grabAnnotation(syntaxInfoClass, Since::class.java, { it.value }))
+            data.since = cleanHTML(grabAnnotation(syntaxInfoClass, Since::class.java, { it.value }))?.let { arrayOf(it) }
             data.requiredPlugins = cleanHTML(grabAnnotation(syntaxInfoClass, RequiredPlugins::class.java, { it.value }))
             data.keywords = grabAnnotation(syntaxInfoClass, Keywords::class.java, { it.value })
 
             return data
         }
 
-        fun generateSyntaxFromExpression(info: ExpressionInfo<*, *>, sender: CommandSender?): SyntaxData? {
-            val data = generateSyntaxFromSyntaxElementInfo(info, sender) ?: return null
+        fun generateSyntaxFromExpression(info: ExpressionInfo<*, *>): SyntaxData? {
+            val data = generateSyntaxFromSyntaxElementInfo(info) ?: return null
 
             // Return Type
             val classInfo = Classes.getExactClassInfo(info.returnType) ?: Classes.getSuperClassInfo(info.returnType)
@@ -69,7 +67,7 @@ class GenerateSyntax {
             return data
         }
 
-        fun generateSyntaxFromEvent(info: SkriptEventInfo<*>, getter: EventValuesGetter?, sender: CommandSender?): SyntaxData? {
+        fun generateSyntaxFromEvent(info: SkriptEventInfo<*>, getter: EventValuesGetter?): SyntaxData? {
             if (info.description != null && info.description.contentEquals(SkriptEventInfo.NO_DOC)) {
                 return null
             }
@@ -86,7 +84,7 @@ class GenerateSyntax {
             data.patterns = cleanSyntaxInfoPatterns(info.patterns).map { "[on] $it" }.toTypedArray()
             data.requiredPlugins = info.requiredPlugins
             data.keywords = info.keywords
-            data.entries = generateEntriesFromSyntaxElementInfo(info, sender)
+            data.entries = generateEntriesFromSyntaxElementInfo(info)
 
             if (getter != null) {
                 val classes = getter.getEventValues(info.events)
@@ -138,9 +136,9 @@ class GenerateSyntax {
                 data.patterns = Array(size) { _ -> "" }
 
                 for (test in info.userInputPatterns!!.indices) {
-                    data.patterns!![test] = info.userInputPatterns!![test].pattern()
-                        .replace("\\((.+?)\\)\\?".toRegex(), "[$1]")
-                        .replace("(.)\\?".toRegex(), "[$1]")
+                    info.userInputPatterns!![test]?.pattern()
+                        ?.replace("\\((.+?)\\)\\?".toRegex(), "[$1]")
+                        ?.replace("(.)\\?".toRegex(), "[$1]")?.let { data.patterns!![test] = it }
                 }
             } else {
                 data.patterns = Array(1) { _ -> info.codeName }
@@ -175,7 +173,7 @@ class GenerateSyntax {
             return data
         }
 
-        private fun generateEntriesFromSyntaxElementInfo(info: SyntaxElementInfo<*>, sender: CommandSender?) : Array<DocumentationEntryNode>? {
+        private fun generateEntriesFromSyntaxElementInfo(info: SyntaxElementInfo<*>) : Array<DocumentationEntryNode>? {
             if (info is StructureInfo) {
                 val entryValidator = info.entryValidator ?: return null
                 return entryValidator.entryData.map(DocumentationEntryNode::from).toTypedArray()
@@ -187,13 +185,8 @@ class GenerateSyntax {
             try {
                 fields = elementClass.declaredFields
             } catch (ex: Exception) {
-                sender?.sendMessage(
-                    "[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                            + ChatColor.RESET + "] " + ChatColor.YELLOW + "Warning: Unable to access declared fields " +
-                            "for ${info.originClassPath} to find the SectionValidator."
-                )
 
-                // ex.printStackTrace();
+                ex.printStackTrace();
                 return null
             }
 
@@ -205,13 +198,8 @@ class GenerateSyntax {
                         field.isAccessible = true
                         entryValidator = field.get(null) as? EntryValidator ?: break
                     } catch (ex: Exception) {
-                        sender?.sendMessage(
-                            "[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                                    + ChatColor.RESET + "] " + ChatColor.YELLOW + "Warning: Unable to find the " +
-                                    "EntryValidator for ${info.originClassPath}"
-                        )
 
-                        // ex.printStackTrace();
+                        ex.printStackTrace();
                         return null
                     }
                 } else if (field.type.isAssignableFrom(EntryValidatorBuilder::class.java)) {
@@ -222,13 +210,8 @@ class GenerateSyntax {
                         entryValidator = entryValidatorBuilder.build()
 
                     } catch (ex: Exception) {
-                        sender?.sendMessage(
-                            "[" + ChatColor.DARK_AQUA + "Skript Hub Docs Tool"
-                                    + ChatColor.RESET + "] " + ChatColor.YELLOW + "Warning: Unable to find the " +
-                                    "EntryValidator.EntryValidatorBuilder for ${info.originClassPath}"
-                        )
 
-                        // ex.printStackTrace();
+                        ex.printStackTrace();
                         return null
                     }
                 }
