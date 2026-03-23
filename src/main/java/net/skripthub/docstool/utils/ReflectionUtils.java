@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
  * Just a simple reflection class, just to not depend on Skript 2.2+ (I think it is the only thing I use from it)
  * @author Tuke_Nuke
  */
+@SuppressWarnings("unchecked")
 public class ReflectionUtils {
 
     /**
@@ -148,16 +149,27 @@ public class ReflectionUtils {
      * @param field - The field name
      * @return The object value.
      */
-    @SuppressWarnings("unchecked")
     public static <T> T getField(Class<?> from, Object obj, String field){
         try{
-            Field f = from.getDeclaredField(field);
-            f.setAccessible(true);
-            return (T) f.get(obj);
+            return getFieldUnsafe(from, obj, field);
         } catch (Exception e){
             e.printStackTrace();
         }
         return null;
 
+    }
+
+    private static <T> T getFieldUnsafe(Class<?> from, Object obj, String field) throws NoSuchFieldException, IllegalAccessException {
+        Field f = from.getDeclaredField(field);
+        f.setAccessible(true);
+        return (T) f.get(obj);
+    }
+
+    public static <T> T getFieldOrElse(Class<?> from, Object obj, String field, String backupField){
+        try {
+            return getFieldUnsafe(from, obj, field);
+        } catch (Exception e) {
+            return getField(from, obj, backupField);
+        }
     }
 }
