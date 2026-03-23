@@ -26,6 +26,7 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: net.minest
     // addonPackageMap is a hard coded map of known internal packages so we are always mapping back
     // to the right addon.
     private var addonPackageMap: HashMap<String, String> = hashMapOf(
+        "com.github.hapily04.skriptminestom" to "ch.njol.skript",
         "org.skriptlang.skript" to "ch.njol.skript",
         "Skript" to "ch.njol.skript"
     )

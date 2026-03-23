@@ -5,7 +5,7 @@ import net.minestom.server.command.builder.condition.Conditions
 import net.skripthub.docstool.Core
 import net.skripthub.docstool.documentation.BuildDocs
 
-class GenerateDocsCommand : Command("generatedocs") {
+class GenerateDocsCommand : Command("gendocs") {
 
     init {
         setCondition { sender, ctx -> Conditions.consoleOnly(sender, ctx) }

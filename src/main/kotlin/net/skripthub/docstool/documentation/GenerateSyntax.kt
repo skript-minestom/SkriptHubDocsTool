@@ -105,8 +105,10 @@ class GenerateSyntax {
 
         @Suppress("UNCHECKED_CAST")
         fun generateSyntaxFromClassInfo(info: ClassInfo<*>) : SyntaxData? {
+            println("Info: " + info.codeName)
             if (info.docName != null && info.docName.equals(ClassInfo.NO_DOC))
                 return null
+            println("past null")
             val data = SyntaxData()
 
             data.name = when {
