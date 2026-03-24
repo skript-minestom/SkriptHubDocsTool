@@ -1,29 +1,21 @@
 # Skript Hub Docs Tool
 
-Skript Hub Docs Tools is a plugin for Spigot servers to help Skript Addon Developers autogenerate their documentation. This tool offers a one command approach for plugins using Skript's Documentation Annotations to get all their documenatation into a single JSON file. This file can then be uploaded to Skript Hub or used in other tools so all Skripters can view and use the docs.
+Skript Hub Docs Tools is a plugin for skript-minestom servers to help Skript Addon Developers autogenerate their documentation. This tool offers a one command approach for plugins using Skript's Documentation Annotations to get all their documenatation into a single JSON file. This file can then be uploaded to Skript Hub or used in other tools so all Skripters can view and use the docs.
 
 ## Prerequisites
 
-1. A Spigot server 
-2. Skript (version dev37 or greater)
-3. Your Skript Addon with all the necessary supporting plugins to enable all syntax elements
+1. skript-minestom
+2. Your Skript Addon with all the necessary supporting plugins to enable all syntax elements
 
 
 ## How to use
 
-1. Download the Skript Hub Docs Tool from [here](https://github.com/SkriptHub/SkriptHubDocsTool/releases) and place it into your development servers ```/plugin/``` folder. **DO NOT USE THIS PLUGIN IN PRODUCTION!**
+1. Download the Skript Hub Docs Tool from [here](https://github.com/SkriptHub/SkriptHubDocsTool/releases) and place it into your development servers ```/Skript/addons/``` folder. **DO NOT USE THIS PLUGIN IN PRODUCTION!**
 2. Run your server.
-3. Either in console or in game run the command ```/gendocs```.
+3. On console run the command ```/gendocs```.
 4. Verify from the output dialog that there were not any errors/id collisions for your addon that could not be merged successfully. You might need manually check these in the output file.
-5. The generated JSON files can be found in the ```\plugins\SkriptHubDocsTool\documentation``` folder.
+5. The generated JSON files can be found in the ```/SkriptHubDocsTool/documentation``` folder.
 6. (Optional) Copy the contents of you addons JSON file and paste it into the Skript Hub JSON import tool and submit the docs. Skript Hub will automatically update all your public documentation.
-
-## Permissions
-
-| Permission | Description |
-|------------|-------------|
-| docstool.command.gendocs | Can use /gendocs  |
-    
 
 ## Trouble Shooting
 
