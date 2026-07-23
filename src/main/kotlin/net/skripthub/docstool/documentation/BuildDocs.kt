@@ -5,6 +5,8 @@ import ch.njol.skript.classes.ClassInfo
 import ch.njol.skript.lang.SkriptEventInfo
 import ch.njol.skript.lang.SyntaxElementInfo
 import ch.njol.skript.lang.function.Functions
+import ch.njol.skript.lang.function.JavaFunction
+import ch.njol.skript.lang.util.SimpleEvent
 import ch.njol.skript.log.SkriptLogger
 import ch.njol.skript.registrations.Classes
 import net.skripthub.docstool.modals.AddonData
@@ -13,6 +15,8 @@ import net.skripthub.docstool.modals.SyntaxData
 import net.skripthub.docstool.utils.EventValuesGetter
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
+import org.skriptlang.skript.bukkit.lang.eventvalue.EventValueRegistry
+import org.skriptlang.skript.common.function.DefaultFunction
 import java.io.*
 
 
@@ -48,11 +52,12 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: net.minest
 
         // Events
         val getter = EventValuesGetter()
+        val eventValueRegistry = Skript.instance().registry(EventValueRegistry::class.java)
         for (eventInfoClassUnsafe in Skript.getEvents()){
             val eventInfoClass = eventInfoClassUnsafe as SkriptEventInfo<*>
             val addonEvents = getAddon(eventInfoClass)?.events ?: continue
             // TODO Throw error when null
-            addSyntax(addonEvents, GenerateSyntax.generateSyntaxFromEvent(eventInfoClass, getter))
+            addSyntax(addonEvents, GenerateSyntax.generateSyntaxFromEvent(eventInfoClass, eventValueRegistry, getter))
         }
 
         // Conditions
@@ -85,9 +90,18 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: net.minest
         }
 
         // Functions
-        for (info in Functions.getJavaFunctions()) {
-            val addonFunctions = getAddon(info.javaClass)?.functions ?: continue
-            addSyntax(addonFunctions, GenerateSyntax.generateSyntaxFromFunctionInfo(info))
+        for (function in Functions.getFunctions()) {
+            when (function) {
+                is JavaFunction<*> -> {
+                    val addonFunctions = getAddon(function.javaClass)?.functions ?: continue
+                    addSyntax(addonFunctions, GenerateSyntax.generateSyntaxFromFunctionInfo(function))
+                }
+                is DefaultFunction<*> -> {
+                    // DefaultFunction shares a single impl class; use the registering addon source instead
+                    val addonFunctions = getAddon(function.source().source())?.functions ?: continue
+                    addSyntax(addonFunctions, GenerateSyntax.generateSyntaxFromFunctionInfo(function))
+                }
+            }
         }
 
         // Sections
@@ -244,7 +258,9 @@ class BuildDocs(private val instance: JavaPlugin, private val sender: net.minest
 
         if (name == "ch.njol.skript.lang.util") {
             // Used Simple event or expression registration
-            name = skriptEventInfo.originClassPath
+            name = if (skriptEventInfo is SkriptEventInfo.ModernSkriptEventInfo && skriptEventInfo.elementClass == SimpleEvent::class.java) {
+                skriptEventInfo.events[0].packageName
+            } else skriptEventInfo.originClassPath
         }
 
         // Check to see if we need to remap the package to the addon root package.

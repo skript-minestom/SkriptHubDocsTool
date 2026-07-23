@@ -14,7 +14,9 @@ import net.skripthub.docstool.modals.DocumentationEntryNode
 import net.skripthub.docstool.modals.SyntaxData
 import net.skripthub.docstool.utils.EventValuesGetter
 import net.skripthub.docstool.utils.ReflectionUtils
-import org.bukkit.event.Cancellable
+import org.skriptlang.skript.bukkit.lang.eventvalue.EventValue
+import org.skriptlang.skript.bukkit.lang.eventvalue.EventValueRegistry
+import org.skriptlang.skript.common.function.DefaultFunction
 import org.skriptlang.skript.lang.entry.EntryValidator
 import org.skriptlang.skript.lang.entry.EntryValidator.EntryValidatorBuilder
 import org.skriptlang.skript.lang.structure.StructureInfo
@@ -68,7 +70,7 @@ class GenerateSyntax {
             return data
         }
 
-        fun generateSyntaxFromEvent(info: SkriptEventInfo<*>, getter: EventValuesGetter?): SyntaxData? {
+        fun generateSyntaxFromEvent(info: SkriptEventInfo<*>, eventValueRegistry: EventValueRegistry, getter: EventValuesGetter?): SyntaxData? {
             if (info.description != null && info.description.contentEquals(SkriptEventInfo.NO_DOC)) {
                 return null
             }
@@ -81,27 +83,71 @@ class GenerateSyntax {
             data.description = cleanHTML(info.description)
             data.examples = cleanHTML(info.examples)
             data.since = if (!info.since.isNullOrEmpty()) info.since?.map { cleanHTML(it).toString() }?.toTypedArray() else null
-            data.cancellable = info.events.filterNotNull().all { EffCancelEvent.isCancellable(it) }
+            data.cancellable = info.events.filterNotNull().any { EffCancelEvent.isCancellable(it) }
             data.patterns = cleanSyntaxInfoPatterns(info.patterns).map { "[on] $it" }.toTypedArray()
             data.requiredPlugins = info.requiredPlugins
             data.keywords = info.keywords
             data.entries = generateEntriesFromSyntaxElementInfo(info)
 
-            if (getter != null) {
-                val classes = getter.getEventValues(info.events)
-                if (classes == null || classes.isEmpty())
-                    return null
+            val eventValuesStrings = ArrayList<String>()
+
+            for (eventClass in info.events) {
+                val eventValues = eventValueRegistry.elements(eventClass)
+
+                for (eventValue in eventValues)
+                {
+                    val patterns = eventValue.patterns()
+                    val time = eventValue.time()
+                    var builtString: String? = null;
+                    if (!patterns.isNullOrEmpty()) {
+                        for (pattern in patterns) {
+                            if (!pattern.isNullOrEmpty()) {
+                                builtString = buildEventValueString(pattern, time)
+                            }
+                        }
+                    }/* else {
+                        val codeName = grabCodeName(eventValue.valueClass())
+                        if (!codeName.isNullOrEmpty()) {
+                            builtString = buildEventValueString(codeName, time)
+                        }
+                    }*/
+                    if (!eventValuesStrings.contains(builtString)) builtString?.let { eventValuesStrings.add(it) };
+                }
+
+                // use old method to get marker/other event values
+                val classes = getter?.getEventValues(info.events)
+                if (classes.isNullOrEmpty()) continue
                 val time = arrayOf("past event-", "event-", "future event-")
                 val times = ArrayList<String>()
                 for (x in classes.indices)
                     (0 until classes[x].size)
                         .mapNotNull { grabCodeName(classes[x][it]) }
-                        .mapTo(times) { time[x] + it }
-                // Sort the event values alphabetically to prevent update churn
-                data.eventValues = times.sortedBy { it }.toTypedArray()
+                        .map { time[x] + it }
+                        .filter { !eventValuesStrings.contains(it) }
+                        .mapTo(times) { it }
+
+                eventValuesStrings.addAll(times)
+            }
+
+            if (eventValuesStrings.isNotEmpty()) {
+                data.eventValues = eventValuesStrings.sortedBy { it }.toTypedArray()
             }
 
             return data
+        }
+
+        private fun buildEventValueString(eventValue: String, time: EventValue.Time): String {
+            return when (time) {
+                EventValue.Time.NOW -> {
+                    "event-$eventValue"
+                }
+                EventValue.Time.PAST -> {
+                    "past event-$eventValue"
+                }
+                else -> {
+                    "future event-$eventValue"
+                }
+            }
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -167,6 +213,34 @@ class GenerateSyntax {
                 data.since = arrayOf(sinceString)
             }
             val infoReturnType = info.returnType
+            if (infoReturnType != null) {
+                data.returnType =
+                    if (infoReturnType.docName.isNullOrBlank()) infoReturnType.codeName else infoReturnType.docName
+            }
+            return data
+        }
+
+        fun generateSyntaxFromFunctionInfo(info: DefaultFunction<*>) : SyntaxData {
+            val data = SyntaxData()
+            data.name = info.name()
+            data.id = "function_" + info.name()
+            data.description = cleanHTML(info.description().toTypedArray())
+            data.examples = cleanHTML(info.examples().toTypedArray())
+            data.keywords = info.keywords().toTypedArray()
+            data.requiredPlugins = cleanHTML(info.requires().toTypedArray())
+
+            val function = info as ch.njol.skript.lang.function.Function<*>
+            val parameters = function.parameters
+            val parametersString = StringBuilder("${info.name()}(")
+            if (!parameters.isNullOrEmpty()) {
+                parametersString.append(StringUtils.join(parameters.map { it.toString() }.toTypedArray(), ", "))
+            }
+            parametersString.append(")")
+
+            data.patterns = cleanSyntaxInfoPatterns(arrayOf(parametersString.toString()), true)
+            data.since = cleanHTML(info.since().toTypedArray())
+
+            val infoReturnType = function.returnType
             if (infoReturnType != null) {
                 data.returnType =
                     if (infoReturnType.docName.isNullOrBlank()) infoReturnType.codeName else infoReturnType.docName

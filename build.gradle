@@ -24,13 +24,11 @@ kotlin {
 
 repositories {
     mavenCentral()
-    maven { url = "https://repo.hypera.dev/snapshots/" }
-    maven { url = 'https://maven.hapily.me/releases' }
     maven { url = 'https://maven.hapily.me/snapshots' }
 }
 
 dependencies {
-    compileOnly "com.github.hapily04:skript-minestom:1.0.0-alpha.1"
+    compileOnly "com.github.hapily04:skript-minestom:1.0.0-pre-alpha.5"
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
 }
 
